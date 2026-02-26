@@ -1,6 +1,6 @@
 # glados_auto_checkin
 
-这是一个供最终用户使用的自动签到工具，针对 https://glados.cloud/console/checkin 页面实现自动签到
+这是一个glados的自动签到工具，针对 https://glados.cloud/console/checkin 页面实现自动签到
 
 功能概述
 - 模拟 HTTP 请求完成签到流程（基于用户提供的 Cookie）。
