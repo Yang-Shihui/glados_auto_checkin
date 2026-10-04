@@ -17,6 +17,10 @@ import requests
 
 LOG = logging.getLogger("glados_auto_checkin")
 
+# 完整浏览器指纹，避免光秃秃的 "Mozilla/5.0" 显得像脚本
+BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+
 
 def load_config(path: str) -> dict:
     with open(path, "r", encoding="utf-8") as f:
@@ -34,8 +38,9 @@ def requests_checkin(config: dict) -> int:
         return 0
 
     session = requests.Session()
-    # 设置 cookie
-    session.headers.update({"User-Agent": "Mozilla/5.0"})
+    # 设置 cookie 与浏览器指纹
+    session.headers.update({"User-Agent": BROWSER_UA,
+                            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8"})
     session.headers.update({"Cookie": cookie})
 
     checkin_page = config.get("checkin_page", "https://glados.cloud/console/checkin")

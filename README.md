@@ -95,9 +95,13 @@ python auto_checkin.py -c config.json -m playwright
 
 1. 在仓库 **Settings → Secrets and variables → Actions → New repository secret** 添加：
    - `GLADOS_COOKIE_1`：账号 1 的 Cookie（登录 glados.rocks 后 F12 → Application → Cookies，复制 `gld:sess=...; gld:sess.sig=...` 整行）
-   - `GLADOS_COOKIE_2`：账号 2 的 Cookie
-   - 可选：`GLADOS_BASE_URL`（默认 `https://glados.rocks`）、`GLADOS_CHECKIN_TOKEN`（默认 `glados.one`）
-2. 手动测试：**Actions → GLaDOS 自动签到 → Run workflow**。
-3. 之后每天北京时间 00:20 自动签到，17:00 兜底重试；结果见 Actions 运行页面的 Summary 表格。
+   - `GLADOS_COOKIE_2`（可选）：账号 2 的 Cookie，添加后自动启用第二班签到，无需改代码
+   - 可选覆盖项：`GLADOS_BASE_URL`（默认 `https://glados.rocks`）、`GLADOS_CHECKIN_TOKEN`（默认 `glados.one`）
+2. 手动测试：**Actions → GLaDOS 自动签到 → Run workflow**（手动触发立即执行，不加随机延迟）。
+3. 定时与防检测策略：
+   - 账号 1：北京时间每天 00:20 触发后随机延迟 0~30 分钟签到
+   - 账号 2：北京时间每天 17:00 触发后随机延迟签到（与账号 1 错开时间和请求指纹）
+   - 请求使用完整 Chrome UA；未配置的账号自动跳过，失败时 GitHub 会邮件通知
+4. 防停用：仓库 60 天无活动时定时任务会被 GitHub 停用，工作流已内置 keepalive 自动保活。
 
-> Cookie 等同登录凭证，只存放在 GitHub Secrets（加密），不要提交到代码里。定时任务 60 天无活动会被 GitHub 停用，工作流已内置 keepalive 自动保活。
+> Cookie 等同登录凭证，只存放在 GitHub Secrets（加密存储、日志自动打码），不要提交到代码里。

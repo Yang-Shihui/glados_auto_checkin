@@ -1,11 +1,14 @@
 name: GLaDOS 自动签到
 
-# 定时：北京时间每天 00:20 主签到，17:00 兜底重试（当天已签到时 API 会返回已签到，无副作用）
+# 定时策略（北京时间）：
+#   账号1 —— 每天 00:20 触发后随机延迟 0~30 分钟签到
+#   账号2 —— 每天 17:00 触发后随机延迟签到（与账号1错开时间与请求指纹）
+#   手动触发（workflow_dispatch）立即执行、不加延迟，用于测试
 on:
   schedule:
-    - cron: '20 16 * * *'   # 北京时间 00:20
-    - cron: '0 9 * * *'     # 北京时间 17:00（兜底）
-  workflow_dispatch: {}     # 支持在 Actions 页面手动触发测试
+    - cron: '20 16 * * *'   # 北京 00:20 —— 账号1
+    - cron: '0 9 * * *'     # 北京 17:00 —— 账号2
+  workflow_dispatch: {}
 
 permissions:
   contents: write           # keepalive-workflow 需要提交保活 commit
@@ -16,16 +19,21 @@ concurrency:
 
 jobs:
   checkin:
+    name: 签到（${{ matrix.account }}）
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
           - account: 账号1
             secret: GLADOS_COOKIE_1
+            schedule: '20 16 * * *'
           - account: 账号2
             secret: GLADOS_COOKIE_2
+            schedule: '0 9 * * *'
+    # 定时触发时各账号只跑自己那一班；手动触发时两个都跑
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == matrix.schedule
     steps:
       - uses: actions/checkout@v4
 
@@ -36,6 +44,14 @@ jobs:
       - name: 安装依赖
         run: pip install -r requirements.txt
 
+      # 模拟真人作息：定时运行时随机睡 0~29 分钟；手动测试立即执行
+      - name: 随机延迟
+        if: github.event_name == 'schedule'
+        run: |
+          D=$((RANDOM % 30))
+          echo "随机延迟 ${D} 分钟"
+          sleep $((D * 60))
+
       - name: 签到（${{ matrix.account }}）
         id: checkin
         env:
@@ -44,8 +60,14 @@ jobs:
           GLADOS_CHECKIN_TOKEN: ${{ secrets.GLADOS_CHECKIN_TOKEN }}
         run: |
           if [ -z "$GLADOS_COOKIE" ]; then
-            echo "❌ 缺少 secret ${{ matrix.secret }}"
+            if [ "${{ matrix.secret }}" = "GLADOS_COOKIE_2" ]; then
+              echo "⏭️ 未配置 GLADOS_COOKIE_2 —— 当前只启用账号1，跳过（属正常，配置 Secret 后自动启用）"
+              echo "| 账号2 | ⏭️ 跳过（未配置 Secret） |" >> $GITHUB_STEP_SUMMARY
+              exit 0
+            fi
+            echo "❌ 缺少 secret GLADOS_COOKIE_1"
             echo "请到仓库 Settings → Secrets and variables → Actions → New repository secret 添加"
+            echo "| 账号1 | ❌ 缺少 Secret，未签到 |" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
           python - <<'PYEOF'
@@ -66,13 +88,8 @@ jobs:
           python auto_checkin.py -c config_runtime.json
 
       - name: 写运行结果摘要
-        if: always()
-        run: |
-          if [ "${{ steps.checkin.outcome }}" = "success" ]; then
-            echo "| ${{ matrix.account }} | ✅ 成功 |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| ${{ matrix.account }} | ❌ 失败（详情见上方日志） |" >> $GITHUB_STEP_SUMMARY
-          fi
+        if: always() && steps.checkin.outcome == 'success'
+        run: echo "| ${{ matrix.account }} | ✅ 成功 |" >> $GITHUB_STEP_SUMMARY
 
       # 仓库 60 天无活动时 GitHub 会自动停用定时任务，此动作会自动提交空 commit 保活
       - name: 保活（防止定时任务被停用）
