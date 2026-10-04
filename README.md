@@ -90,3 +90,14 @@ python auto_checkin.py -c config.json -m playwright
 
 
 
+
+## GitHub Actions 部署（推荐，免费无需服务器）
+
+1. 在仓库 **Settings → Secrets and variables → Actions → New repository secret** 添加：
+   - `GLADOS_COOKIE_1`：账号 1 的 Cookie（登录后 F12 → Application → Cookies，复制 `koa:sess=...; koa:sess.sig=...` 整行）
+   - `GLADOS_COOKIE_2`：账号 2 的 Cookie
+   - 可选：`GLADOS_BASE_URL`（默认 `https://glados.cloud`）、`GLADOS_CHECKIN_TOKEN`（默认 `glados.cloud`）
+2. 手动测试：**Actions → GLaDOS 自动签到 → Run workflow**。
+3. 之后每天北京时间 00:20 自动签到，17:00 兜底重试；结果见 Actions 运行页面的 Summary 表格。
+
+> Cookie 等同登录凭证，只存放在 GitHub Secrets（加密），不要提交到代码里。定时任务 60 天无活动会被 GitHub 停用，工作流已内置 keepalive 自动保活。

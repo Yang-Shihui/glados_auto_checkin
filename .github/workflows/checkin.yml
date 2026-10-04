@@ -1,0 +1,80 @@
+name: GLaDOS 自动签到
+
+# 定时：北京时间每天 00:20 主签到，17:00 兜底重试（当天已签到时 API 会返回已签到，无副作用）
+on:
+  schedule:
+    - cron: '20 16 * * *'   # 北京时间 00:20
+    - cron: '0 9 * * *'     # 北京时间 17:00（兜底）
+  workflow_dispatch: {}     # 支持在 Actions 页面手动触发测试
+
+permissions:
+  contents: write           # keepalive-workflow 需要提交保活 commit
+
+concurrency:
+  group: checkin
+  cancel-in-progress: false
+
+jobs:
+  checkin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - account: 账号1
+            secret: GLADOS_COOKIE_1
+          - account: 账号2
+            secret: GLADOS_COOKIE_2
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 签到（${{ matrix.account }}）
+        id: checkin
+        env:
+          GLADOS_COOKIE: ${{ secrets[matrix.secret] }}
+          GLADOS_BASE_URL: ${{ secrets.GLADOS_BASE_URL }}
+          GLADOS_CHECKIN_TOKEN: ${{ secrets.GLADOS_CHECKIN_TOKEN }}
+        run: |
+          if [ -z "$GLADOS_COOKIE" ]; then
+            echo "❌ 缺少 secret ${{ matrix.secret }}"
+            echo "请到仓库 Settings → Secrets and variables → Actions → New repository secret 添加"
+            exit 1
+          fi
+          python - <<'PYEOF'
+          import json, os
+          base = (os.environ.get("GLADOS_BASE_URL") or "https://glados.cloud").rstrip("/")
+          token = os.environ.get("GLADOS_CHECKIN_TOKEN") or "glados.cloud"
+          cfg = {
+              "mode": "requests",
+              "checkin_page": f"{base}/console/checkin",
+              "cookie": os.environ["GLADOS_COOKIE"],
+              "checkin_post_url": f"{base}/api/user/checkin",
+              "post_json": {"token": token},
+          }
+          with open("config_runtime.json", "w", encoding="utf-8") as f:
+              json.dump(cfg, f, ensure_ascii=False, indent=2)
+          print("签到地址:", cfg["checkin_post_url"])
+          PYEOF
+          python auto_checkin.py -c config_runtime.json
+
+      - name: 写运行结果摘要
+        if: always()
+        run: |
+          if [ "${{ steps.checkin.outcome }}" = "success" ]; then
+            echo "| ${{ matrix.account }} | ✅ 成功 |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| ${{ matrix.account }} | ❌ 失败（详情见上方日志） |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # 仓库 60 天无活动时 GitHub 会自动停用定时任务，此动作会自动提交空 commit 保活
+      - name: 保活（防止定时任务被停用）
+        if: always()
+        uses: gautamkrishnar/keepalive-workflow@v2
