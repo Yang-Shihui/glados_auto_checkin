@@ -1,7 +1,7 @@
 {
   "mode": "requests",
-  "checkin_page": "https://glados.cloud/console/checkin",
-  "cookie": "",
-  "checkin_post_url": "https://glados.cloud/api/user/checkin",
-  "post_json": {"token": "glados.cloud"}
+  "checkin_page": "https://glados.rocks/console/checkin",
+  "cookie": "gld:sess=...; gld:sess.sig=...",
+  "checkin_post_url": "https://glados.rocks/api/user/checkin",
+  "post_json": {"token": "glados.one"}
 }

@@ -50,8 +50,8 @@ jobs:
           fi
           python - <<'PYEOF'
           import json, os
-          base = (os.environ.get("GLADOS_BASE_URL") or "https://glados.cloud").rstrip("/")
-          token = os.environ.get("GLADOS_CHECKIN_TOKEN") or "glados.cloud"
+          base = (os.environ.get("GLADOS_BASE_URL") or "https://glados.rocks").rstrip("/")
+          token = os.environ.get("GLADOS_CHECKIN_TOKEN") or "glados.one"
           cfg = {
               "mode": "requests",
               "checkin_page": f"{base}/console/checkin",
