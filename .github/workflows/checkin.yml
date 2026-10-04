@@ -109,7 +109,19 @@ jobs:
         if: always() && steps.checkin.outcome == 'failure'
         run: echo "| ${{ matrix.account }} | ❌ 失败（详情见上方日志） |" >> $GITHUB_STEP_SUMMARY
 
-      # 仓库 60 天无活动时 GitHub 会自动停用定时任务，此动作会自动提交空 commit 保活
+      # 仓库 60 天无活动时 GitHub 会自动停用定时任务；距上次提交超 50 天时自动提交空 commit 保活。
+      # 纯官方实现（只用 git），不引用任何第三方 Action
       - name: 保活（防止定时任务被停用）
-        if: always()
-        uses: gautamkrishnar/keepalive-workflow@v2
+        if: always() && steps.gate.outputs.run == 'true'
+        run: |
+          LAST=$(git log -1 --format=%ct)
+          NOW=$(date +%s)
+          AGE=$(( (NOW - LAST) / 86400 ))
+          if [ "$AGE" -ge 50 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "chore: keepalive（防止定时任务被停用）[skip ci]"
+            git push
+          else
+            echo "距上次提交 ${AGE} 天，未达 50 天阈值，无需保活"
+          fi
