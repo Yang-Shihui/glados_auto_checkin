@@ -35,7 +35,7 @@ def requests_checkin(config: dict) -> int:
     cookie = config.get("cookie")
     if not cookie:
         LOG.error("requests 模式需要在配置中提供 'cookie' 字段")
-        return 0
+        return 1
 
     session = requests.Session()
     # 设置 cookie 与浏览器指纹
@@ -79,10 +79,38 @@ def requests_checkin(config: dict) -> int:
         LOG.info("提交签到请求到 %s，表单字段：%s", post_url, list(data.keys()))
         resp = session.post(post_url, data=data, timeout=15)
     try:
-        LOG.info("签到返回：%s %s", resp.status_code, resp.text[:300])
+        LOG.info("签到返回：HTTP %s %s", resp.status_code, resp.text[:300])
     except Exception:
         LOG.info("签到返回：%s (无法显示文本)", resp.status_code)
-    return resp.status_code
+
+    # 解析业务结果：HTTP 200 不代表签到成功（cookie 失效时也可能返回 200）
+    if resp.status_code >= 400:
+        LOG.error("签到接口返回 HTTP %s", resp.status_code)
+        return resp.status_code
+
+    try:
+        data = resp.json()
+    except ValueError:
+        data = None
+
+    if isinstance(data, dict):
+        code = data.get("code")
+        message = str(data.get("message", ""))
+        if code == 0:
+            LOG.info("✅ 签到成功：%s（+%s 积分，已连续 %s 天）",
+                     message, data.get("points"), data.get("streak"))
+            return 0
+        if code == 1 or "tomorrow" in message.lower() or "already" in message.lower():
+            LOG.info("✅ 今天已签到：%s", message)
+            return 0
+        LOG.error("❌ 签到被拒绝（code=%s）：%s", code, message or resp.text[:200])
+        return 1
+
+    if re.search(r"sign\s*in|login", resp.text[:3000], re.I):
+        LOG.error("❌ 接口返回了登录页，Cookie 很可能已失效，请重新登录并更新 Secret")
+    else:
+        LOG.error("❌ 无法识别的响应体：%s", resp.text[:200])
+    return 1
 
 
 def selenium_checkin(config: dict) -> int:
@@ -251,12 +279,10 @@ def main(argv=None):
 
     if mode == "requests":
         code = requests_checkin(config)
-        if code and code < 400:
-            LOG.info("请求模式签到看起来成功（HTTP %s）", code)
+        if code == 0:
             sys.exit(0)
-        else:
-            LOG.error("请求模式签到失败或未确认（HTTP %s）", code)
-            sys.exit(1)
+        LOG.error("请求模式签到失败（code=%s）", code)
+        sys.exit(1)
     else:
         if mode == "selenium":
             ok = selenium_checkin(config)
