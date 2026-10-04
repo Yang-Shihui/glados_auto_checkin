@@ -55,7 +55,7 @@ jobs:
 
       - name: 安装依赖
         if: steps.gate.outputs.run == 'true'
-        run: pip install -r requirements.txt
+        run: pip install "requests>=2.28"   # Actions 只用 requests 模式，不装本地浏览器模式的 selenium/playwright
 
       # 模拟真人作息：定时运行时随机睡 0~29 分钟；手动测试立即执行
       - name: 随机延迟
