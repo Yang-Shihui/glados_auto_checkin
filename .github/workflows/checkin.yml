@@ -9,6 +9,9 @@ on:
     - cron: '20 16 * * *'   # 北京 00:20 —— 账号1
     - cron: '0 9 * * *'     # 北京 17:00 —— 账号2
   workflow_dispatch: {}
+  push:
+    branches:
+      - master
 
 permissions:
   contents: write           # keepalive-workflow 需要提交保活 commit
@@ -33,11 +36,12 @@ jobs:
             secret: GLADOS_COOKIE_2
             schedule: '0 9 * * *'
     steps:
-      # 注意：job 级 if 不支持 matrix 上下文，班次判断必须放在步骤级
+      # 注意：job 级 if 不支持 matrix 上下文，班次判断必须放在步骤级。
+      # 定时事件只跑对应班次；其他事件（手动/push 测试）立即跑
       - name: 班次判断
         id: gate
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event.schedule }}" = "${{ matrix.schedule }}" ]; then
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "${{ github.event.schedule }}" = "${{ matrix.schedule }}" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
             echo "命中班次：${{ matrix.account }}（${{ matrix.schedule }}）"
           else
