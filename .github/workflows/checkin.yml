@@ -9,9 +9,6 @@ on:
     - cron: '20 16 * * *'   # 北京 00:20 —— 账号1
     - cron: '0 9 * * *'     # 北京 17:00 —— 账号2
   workflow_dispatch: {}
-  push:
-    branches:
-      - master
 
 permissions:
   contents: write           # keepalive-workflow 需要提交保活 commit
