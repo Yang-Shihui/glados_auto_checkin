@@ -100,7 +100,20 @@ jobs:
               json.dump(cfg, f, ensure_ascii=False, indent=2)
           print("签到地址:", cfg["checkin_post_url"])
           PYEOF
-          python auto_checkin.py -c config_runtime.json && echo "result=ok" >> "$GITHUB_OUTPUT"
+          # 自动重试：瞬时故障（网络抖动、5xx）自愈；最多 3 次，间隔 2 分钟
+          ok=0
+          for attempt in 1 2 3; do
+            if python auto_checkin.py -c config_runtime.json; then
+              ok=1
+              echo "result=ok" >> "$GITHUB_OUTPUT"
+              break
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "第 ${attempt} 次签到未成功，120 秒后重试..."
+              sleep 120
+            fi
+          done
+          [ "$ok" = "1" ] || exit 1
 
       - name: 写成功摘要
         if: always() && steps.checkin.outputs.result == 'ok'
