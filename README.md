@@ -100,3 +100,10 @@ GLaDOS 于 2026-11-13 上线了强制 Cloudflare Turnstile + 登录设备绑定 
 - 位置：`../glados_local_checkin/`（本地，不入库——含登录态配置目录）
 - 原理：驱动本机真实 Chrome 打开签到页点击签到，设备/IP/指纹与真人一致
 - `auto_checkin.py` 与 `run_checkin.sh` 保留作历史参考，但已无法通过 GLaDOS 当前风控
+
+## 当前方案（2026-11-14 起）：Chrome 扩展
+
+本机签到已进一步演进为 **Chrome MV3 扩展**（单浏览器多账号、官方账号切换接口、真浏览器 Turnstile、看门狗防卡死）：
+
+- 开源仓库：https://github.com/Yang-Shihui/glados-checkin-extension
+- 本仓库保留为历史参考（纯 HTTP 方案时代的 Actions 工作流，已无法通过 GLaDOS 当前风控）
