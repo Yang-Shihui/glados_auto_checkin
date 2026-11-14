@@ -91,17 +91,12 @@ python auto_checkin.py -c config.json -m playwright
 
 
 
-## GitHub Actions 部署（推荐，免费无需服务器）
+## 重要更新（2026-11）：GitHub Actions 方案已退役
 
-1. 在仓库 **Settings → Secrets and variables → Actions → New repository secret** 添加：
-   - `GLADOS_COOKIE_1`：账号 1 的 Cookie（登录 glados.rocks 后 F12 → Application → Cookies，复制 `gld:sess=...; gld:sess.sig=...` 整行）
-   - `GLADOS_COOKIE_2`（可选）：账号 2 的 Cookie，添加后自动启用第二班签到，无需改代码
-   - 可选覆盖项：`GLADOS_BASE_URL`（默认 `https://glados.rocks`）、`GLADOS_CHECKIN_TOKEN`（默认 `glados.one`）
-2. 手动测试：**Actions → GLaDOS 自动签到 → Run workflow**（手动触发立即执行，不加随机延迟）。
-3. 定时与防检测策略：
-   - 账号 1：北京时间每天 00:20 触发后随机延迟 0~30 分钟签到
-   - 账号 2：北京时间每天 17:00 触发后随机延迟签到（与账号 1 错开时间和请求指纹）
-   - 请求使用完整 Chrome UA；未配置的账号自动跳过，失败时 GitHub 会邮件通知
-4. 防停用：仓库 60 天无活动时定时任务会被 GitHub 停用，工作流已内置 keepalive 自动保活。
+GLaDOS 于 2026-11-13 上线了强制 Cloudflare Turnstile + 登录设备绑定 + 自动化检测，
+纯 HTTP 的签到请求（无论 cookie 是否有效）都会被拒绝（code=5/4，"Automated check-in detected"）。
 
-> Cookie 等同登录凭证，只存放在 GitHub Secrets（加密存储、日志自动打码），不要提交到代码里。
+本仓库的 Actions 工作流因此退役，已迁移到**本机真浏览器方案**（Playwright + 本机 Chrome + Windows 计划任务）：
+- 位置：`../glados_local_checkin/`（本地，不入库——含登录态配置目录）
+- 原理：驱动本机真实 Chrome 打开签到页点击签到，设备/IP/指纹与真人一致
+- `auto_checkin.py` 与 `run_checkin.sh` 保留作历史参考，但已无法通过 GLaDOS 当前风控
